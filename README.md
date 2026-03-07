@@ -1,9 +1,9 @@
 # Network-Intrusion-Detection-System
 ## To do
 1. Packet Capture & Parsing
-- Use Scapy to capture live traffic on a network interface
-- Parse and display key fields: source/dest IP, port, protocol, flags
-- Log all traffic to a .pcap or .csv file
+- Use Scapy to capture live traffic on a network interface ✅
+- Parse and display key fields: source/dest IP, port, protocol, flags ✅
+- Log all traffic to a .pcap or .csv file ✅
 2. Detection Rules Engine
 - Write a rule system (similar to Snort rules) in Python
 - Detect: port scans (many ports hit in short time), SYN flood, ICMP ping sweeps, suspicious payloads
