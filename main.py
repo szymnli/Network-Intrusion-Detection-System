@@ -16,6 +16,8 @@ TIME_WINDOW = 10
 # to trigger port scan detection
 PORT_SCAN_THRESHOLD = 15
 
+SYN_FLOOD_THRESHOLD = 100
+
 # Amount of time for generating another alert for the same IP addr
 ALERT_COOLDOWN = 300
 
@@ -23,6 +25,8 @@ ALERT_COOLDOWN = 300
 packet_log = []
 # Dict for containing ports each IP addr has scanned with a timestamp
 port_scan_tracker = defaultdict(dict)
+# Dict for containing number of packets sent to each port with a timestamp
+syn_flood_tracker = defaultdict(list)
 # Dict for containing IP addresses that triggered an alert
 alerted_ips = {}
 
@@ -70,6 +74,7 @@ def packet_callback(packet):
     # Only include TCP SYN packets for port scan checking
     if proto == "TCP" and str(flag) == "S":
         detect_port_scan(src, dport)
+        detect_syn_flood(src, dport)
 
     # Adding packet information to the log list
     packet_log.append(
@@ -87,9 +92,29 @@ def packet_callback(packet):
     )
 
     # Displaying all captured traffic
-    # print(
-        #f"[{proto}] {src}:{sport} -> {dst}:{dport} ({len(packet)}) -- {flag} -- {icmp_type}"
-    #)
+    print(
+        f"[{proto}] {src}:{sport} -> {dst}:{dport} ({len(packet)}) -- {flag} -- {icmp_type}"
+    )
+
+
+def detect_syn_flood(src, dport):
+    # Get current time
+    now = time.time()
+    # Append timestamp of a packet to the tracker list
+    key = src, dport
+    syn_flood_tracker[key].append(now)
+    # Keep entries only from the TIME_WINDOW
+    recent = [t for t in syn_flood_tracker[key] if now - t < TIME_WINDOW]
+    syn_flood_tracker[key] = recent
+
+    # Alert if count exceeds threshold
+    if len(recent) > SYN_FLOOD_THRESHOLD and (
+        src not in alerted_ips or now - alerted_ips[src]["time"] > ALERT_COOLDOWN
+    ):
+        alerted_ips[src] = {"time": now, "type": "SYN FLOOD"}
+        print(
+            f"[!] SYN FLOOD DETECTED — {src} sent {len(recent)} SYN packets to port {dport} within {TIME_WINDOW} seconds"
+        )
 
 
 def detect_port_scan(src, dport):
@@ -105,8 +130,10 @@ def detect_port_scan(src, dport):
     port_scan_tracker[src] = recent_ports
 
     # Checking if a single IP addr sent packet to more ports than PORT_SCAN_THRESHOLD
-    # and if an alert hasn't already been issued within the ALERT_COOLDOWN 
-    if len(recent_ports) > PORT_SCAN_THRESHOLD and (src not in alerted_ips or now - alerted_ips[src]["time"] > ALERT_COOLDOWN):
+    # and if an alert hasn't already been issued within the ALERT_COOLDOWN
+    if len(recent_ports) > PORT_SCAN_THRESHOLD and (
+        src not in alerted_ips or now - alerted_ips[src]["time"] > ALERT_COOLDOWN
+    ):
         alerted_ips[src] = {"time": now, "type": "PORT SCAN"}
         print(
             f"[!] PORT SCAN DETECTED — {src} has hit {len(port_scan_tracker[src])} unique ports within {TIME_WINDOW} seconds"
