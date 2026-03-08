@@ -82,6 +82,7 @@ def packet_callback(packet):
             "Packet Length": len(packet),
             "TCP Flag": flag,
             "ICMP Type": icmp_type,
+            "Timestamp": time.time(),
         }
     )
 
@@ -105,8 +106,8 @@ def detect_port_scan(src, dport):
 
     # Checking if a single IP addr sent packet to more ports than PORT_SCAN_THRESHOLD
     # and if an alert hasn't already been issued within the ALERT_COOLDOWN 
-    if len(recent_ports) > PORT_SCAN_THRESHOLD and (src not in alerted_ips or now - alerted_ips[src] > ALERT_COOLDOWN):
-        alerted_ips[src] = now
+    if len(recent_ports) > PORT_SCAN_THRESHOLD and (src not in alerted_ips or now - alerted_ips[src]["time"] > ALERT_COOLDOWN):
+        alerted_ips[src] = {"time": now, "type": "PORT SCAN"}
         print(
             f"[!] PORT SCAN DETECTED — {src} has hit {len(port_scan_tracker[src])} unique ports within {TIME_WINDOW} seconds"
         )
@@ -130,7 +131,7 @@ def main():
     # Displaying alert summary
     if len(alerted_ips) > 0:
         for ip in alerted_ips:
-            print(f"\n[!] {ip} caused an alert")
+            print(f"\n[!] {ip} - {alerted_ips[ip]["type"]}")
 
     # Saving logs to a file
     print("\nStopping sniffer...")
