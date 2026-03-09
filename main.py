@@ -16,7 +16,11 @@ TIME_WINDOW = 10
 # to trigger port scan detection
 PORT_SCAN_THRESHOLD = 15
 
+# Amount of SYN TCP packets sent to a single port needed to trigger detection
 SYN_FLOOD_THRESHOLD = 100
+
+# Amount of destination IP addresses a device can send ICMP echo request to, to trigger detection
+ICMP_SWEEP_THRESHOLD = 20
 
 # Amount of time for generating another alert for the same IP addr
 ALERT_COOLDOWN = 300
@@ -27,17 +31,13 @@ packet_log = []
 port_scan_tracker = defaultdict(dict)
 # Dict for containing number of packets sent to each port with a timestamp
 syn_flood_tracker = defaultdict(list)
+# Dict for containing amount of hosts a single IP address has pinged with a timestamp
+icmp_sweep_tracker = defaultdict(dict)
 # Dict for containing IP addresses that triggered an alert
 alerted_ips = {}
 
 
 def packet_callback(packet):
-    # Detect:
-    # port scan
-    # SYN flood
-    # ICMP sweep
-    # Suspicious DNS
-
     # Checking if a packet has an IP layer
     if not packet.haslayer(IP):
         return
@@ -71,10 +71,13 @@ def packet_callback(packet):
     else:
         return
 
-    # Only include TCP SYN packets for port scan checking
+    # Only include TCP SYN packets for port scan and SYN flood checking
     if proto == "TCP" and str(flag) == "S":
         detect_port_scan(src, dport)
         detect_syn_flood(src, dport)
+    # Only ICMP echo packets for ICMP sweep checking
+    elif proto == "ICMP" and icmp_type == 8:
+        detect_icmp_sweep(src, dst)
 
     # Adding packet information to the log list
     packet_log.append(
@@ -92,9 +95,33 @@ def packet_callback(packet):
     )
 
     # Displaying all captured traffic
+    """
     print(
         f"[{proto}] {src}:{sport} -> {dst}:{dport} ({len(packet)}) -- {flag} -- {icmp_type}"
     )
+    """
+
+
+def detect_icmp_sweep(src, dst):
+    # Get current time
+    now = time.time()
+    # Add timestamp to an entry {src: {dst: timestamp, ... }}
+    icmp_sweep_tracker[src][dst] = now
+    # Creating a dict for entries only from the TIME_WINDOW
+    recent_dst_ips = {
+        d: t for d, t in icmp_sweep_tracker[src].items() if now - t < TIME_WINDOW
+    }
+    # Removing entries older than TIME_WINDOW
+    icmp_sweep_tracker[src] = recent_dst_ips
+    # Alert if count exceeds threshold
+    key = src, "ICMP SWEEP"
+    if len(recent_dst_ips) > ICMP_SWEEP_THRESHOLD and (
+        key not in alerted_ips or now - alerted_ips[key]["time"] > ALERT_COOLDOWN
+    ):
+        alerted_ips[key] = {"time": now, "type": "ICMP SWEEP"}
+        print(
+            f"[!] ICMP SWEEP DETECTED -- {src} sent ICMP echo requests to {len(recent_dst_ips)} IPs within {TIME_WINDOW} seconds"
+        )
 
 
 def detect_syn_flood(src, dport):
@@ -108,12 +135,13 @@ def detect_syn_flood(src, dport):
     syn_flood_tracker[key] = recent
 
     # Alert if count exceeds threshold
+    key = src, "SYN FLOOD"
     if len(recent) > SYN_FLOOD_THRESHOLD and (
-        src not in alerted_ips or now - alerted_ips[src]["time"] > ALERT_COOLDOWN
+        key not in alerted_ips or now - alerted_ips[key]["time"] > ALERT_COOLDOWN
     ):
-        alerted_ips[src] = {"time": now, "type": "SYN FLOOD"}
+        alerted_ips[key] = {"time": now, "type": "SYN FLOOD"}
         print(
-            f"[!] SYN FLOOD DETECTED — {src} sent {len(recent)} SYN packets to port {dport} within {TIME_WINDOW} seconds"
+            f"[!] SYN FLOOD DETECTED -- {src} sent {len(recent)} SYN packets to port {dport} within {TIME_WINDOW} seconds"
         )
 
 
@@ -131,12 +159,13 @@ def detect_port_scan(src, dport):
 
     # Checking if a single IP addr sent packet to more ports than PORT_SCAN_THRESHOLD
     # and if an alert hasn't already been issued within the ALERT_COOLDOWN
+    key = src, "PORT SCAN"
     if len(recent_ports) > PORT_SCAN_THRESHOLD and (
-        src not in alerted_ips or now - alerted_ips[src]["time"] > ALERT_COOLDOWN
+        key not in alerted_ips or now - alerted_ips[key]["time"] > ALERT_COOLDOWN
     ):
-        alerted_ips[src] = {"time": now, "type": "PORT SCAN"}
+        alerted_ips[key] = {"time": now, "type": "PORT SCAN"}
         print(
-            f"[!] PORT SCAN DETECTED — {src} has hit {len(port_scan_tracker[src])} unique ports within {TIME_WINDOW} seconds"
+            f"[!] PORT SCAN DETECTED -- {src} has hit {len(port_scan_tracker[src])} unique ports within {TIME_WINDOW} seconds"
         )
 
 
@@ -156,9 +185,15 @@ def main():
     )
 
     # Displaying alert summary
-    if len(alerted_ips) > 0:
-        for ip in alerted_ips:
-            print(f"\n[!] {ip} - {alerted_ips[ip]["type"]}")
+    num_alerts = len(alerted_ips)
+    if num_alerts > 0:
+        print("\n\n")
+        if num_alerts > 1:
+            print(f"[!] {len(alerted_ips)} alerts detected")
+        else:
+            print(f"[!] alert detected:")
+        for ip, info in alerted_ips.items():
+            print(f"> {ip} - {info['type']}")
 
     # Saving logs to a file
     print("\nStopping sniffer...")
