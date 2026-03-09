@@ -1,7 +1,29 @@
 import time
-from config import TIME_WINDOW, PORT_SCAN_THRESHOLD, SYN_FLOOD_THRESHOLD, ICMP_SWEEP_THRESHOLD, ALERT_COOLDOWN
-from logger import port_scan_tracker, syn_flood_tracker, icmp_sweep_tracker, alerted_ips
+
+from scapy.all import *  # type: ignore
+
+from config import (
+    ALERT_COOLDOWN,
+    ICMP_SWEEP_THRESHOLD,
+    PORT_SCAN_THRESHOLD,
+    SYN_FLOOD_THRESHOLD,
+    TIME_WINDOW,
+)
+from logger import (
+    alerted_ips,
+    icmp_sweep_tracker,
+    port_scan_tracker,
+    syn_flood_tracker,
+)
 from ui import show_alert
+
+# Update to a real tracker
+MALICIOUS_DOMAINS = {
+    "malware.testcategory.com",
+    "example-malicious.com",
+    "test.suspicious-domain.net",
+}
+
 
 def detect_port_scan(src, dport):
     # Get current time
@@ -22,7 +44,10 @@ def detect_port_scan(src, dport):
         key not in alerted_ips or now - alerted_ips[key]["time"] > ALERT_COOLDOWN
     ):
         alerted_ips[key] = {"time": now, "type": "PORT SCAN"}
-        show_alert("PORT SCAN", src, f"{len(recent_ports)} unique ports within {TIME_WINDOW}s")
+        show_alert(
+            "PORT SCAN", src, f"{len(recent_ports)} unique ports within {TIME_WINDOW}s"
+        )
+
 
 def detect_syn_flood(src, dport):
     # Get current time
@@ -40,7 +65,11 @@ def detect_syn_flood(src, dport):
         key not in alerted_ips or now - alerted_ips[key]["time"] > ALERT_COOLDOWN
     ):
         alerted_ips[key] = {"time": now, "type": "SYN FLOOD"}
-        show_alert("SYN FLOOD", src, f"{len(recent)} SYN packets to port {dport} within {TIME_WINDOW}s")
+        show_alert(
+            "SYN FLOOD",
+            src,
+            f"{len(recent)} SYN packets to port {dport} within {TIME_WINDOW}s",
+        )
 
 
 def detect_icmp_sweep(src, dst):
@@ -60,4 +89,23 @@ def detect_icmp_sweep(src, dst):
         key not in alerted_ips or now - alerted_ips[key]["time"] > ALERT_COOLDOWN
     ):
         alerted_ips[key] = {"time": now, "type": "ICMP SWEEP"}
-        show_alert("ICMP SWEEP", src, f"ICMP echo requests to {len(recent_dst_ips)} IPs within {TIME_WINDOW}s")
+        show_alert(
+            "ICMP SWEEP",
+            src,
+            f"ICMP echo requests to {len(recent_dst_ips)} IPs within {TIME_WINDOW}s",
+        )
+
+
+def detect_suspicious_dns(src, packet):
+    if not packet.haslayer(DNSQR):
+        return
+
+    now = time.time()
+    dns = packet[DNSQR].qname.decode().strip(".")
+    key = (src, "SUSPICIOUS DNS")
+
+    if dns in MALICIOUS_DOMAINS and (
+        key not in alerted_ips or now - alerted_ips[key]["time"] > ALERT_COOLDOWN
+    ):
+        alerted_ips[key] = {"time": now, "type": "SUSPICIOUS DNS"}
+        show_alert("SUSPICIOUS DNS", src, f"Queried malicious domain: {dns}")

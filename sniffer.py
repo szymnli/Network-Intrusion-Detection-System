@@ -1,8 +1,15 @@
-from scapy.all import *
+from scapy.all import *  # type: ignore
+
 from config import IFACE
-from logger import log_packet, alerted_ips, save_log, packet_log
-from detectors import detect_port_scan, detect_syn_flood, detect_icmp_sweep
-from ui import show_packet, show_summary, show_shutdown
+from detectors import (
+    detect_icmp_sweep,
+    detect_port_scan,
+    detect_suspicious_dns,
+    detect_syn_flood,
+)
+from logger import alerted_ips, log_packet, packet_log, save_log
+from ui import show_packet, show_shutdown, show_summary
+
 
 def packet_callback(packet):
     # Checking if a packet has an IP layer
@@ -45,12 +52,15 @@ def packet_callback(packet):
     # Only ICMP echo packets for ICMP sweep checking
     elif proto == "ICMP" and icmp_type == 8:
         detect_icmp_sweep(src, dst)
+    elif proto == "UDP" and dport == 53:
+        detect_suspicious_dns(src, packet)
 
     # Adding packet information to the log list
     log_packet(proto, src, sport, dst, dport, len(packet), flag, icmp_type)
 
     # Displaying all captured traffic
     show_packet(proto, src, sport, dst, dport, len(packet), flag, icmp_type)
+
 
 def start_sniffing():
     # Starting the sniffing process
