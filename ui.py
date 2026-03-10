@@ -1,8 +1,4 @@
-from datetime import datetime
-
 from rich.console import Console
-
-from config import TIME_WINDOW
 
 console = Console()
 
@@ -27,7 +23,7 @@ def show_summary(alerted_ips):
     if num_alerts > 0:
         console.print(f"\n[!] {num_alerts} alert(s) detected:")
         for ip, info in alerted_ips.items():
-            console.print(f"> {ip} - {info['type']}")
+            console.print(f"> {ip[0]} - {info['type']}")
 
 
 def show_shutdown(packet_count):
