@@ -50,7 +50,7 @@ sudo apt install libpcap-dev
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/Network-Intrusion-Detection-System.git
+git clone https://github.com/szymnli/Network-Intrusion-Detection-System.git
 cd Network-Intrusion-Detection-System
 
 # Create and activate a virtual environment
@@ -86,7 +86,7 @@ All tunable parameters are in `config.py`:
 
 | Parameter | Default | Description |
 |---|---|---|
-| `IFACE` | `wlp0s20f3` | Network interface to monitor |
+| `IFACE` | `eth0` | Network interface to monitor |
 | `TIME_WINDOW` | `10` | Seconds to look back for pattern detection |
 | `PORT_SCAN_THRESHOLD` | `15` | Unique ports before port scan alert |
 | `SYN_FLOOD_THRESHOLD` | `100` | SYN packets to one port before flood alert |
