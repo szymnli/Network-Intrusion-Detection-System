@@ -1,3 +1,5 @@
+from rich import print
+
 from config import TIME_WINDOW
 
 

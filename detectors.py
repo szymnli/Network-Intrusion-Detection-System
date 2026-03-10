@@ -97,13 +97,16 @@ def detect_icmp_sweep(src, dst):
 
 
 def detect_suspicious_dns(src, packet):
+    # Check if the packet contains a DNS query record
     if not packet.haslayer(DNSQR):
         return
 
     now = time.time()
+    # Extract the DNS domain name
     dns = packet[DNSQR].qname.decode().strip(".")
     key = (src, "SUSPICIOUS DNS")
 
+    # Check if the DNS domain is malicious and alert if not seen recently
     if dns in MALICIOUS_DOMAINS and (
         key not in alerted_ips or now - alerted_ips[key]["time"] > ALERT_COOLDOWN
     ):
