@@ -1,28 +1,35 @@
-from rich import print
+from datetime import datetime
+
+from rich.console import Console
 
 from config import TIME_WINDOW
 
+console = Console()
+
 
 def show_packet(proto, src, sport, dst, dport, length, flag, icmp_type):
-    print(
-        f"[{proto}] {src}:{sport} -> {dst}:{dport} ({length}) -- {flag} -- {icmp_type}"
+    console.print(
+        f"[dim][{proto}] {src}:{sport} -> {dst}:{dport} ({length}) -- {flag} -- {icmp_type}[/dim]"
     )
 
 
 def show_alert(attack_type, src, detail):
-    print(f"[!] {attack_type} DETECTED -- {src} | {detail}")
+    console.rule(style="red")
+    console.print(
+        f"  [bold red][!] {attack_type} DETECTED[/bold red] -- [yellow]{src}[/yellow] | {detail}"
+    )
+    console.rule(style="red")
 
 
 def show_summary(alerted_ips):
     # Displaying alert summary
     num_alerts = len(alerted_ips)
     if num_alerts > 0:
-        print("\n")
-        print(f"[!] {num_alerts} alert(s) detected:")
+        console.print(f"\n[!] {num_alerts} alert(s) detected:")
         for ip, info in alerted_ips.items():
-            print(f"> {ip} - {info['type']}")
+            console.print(f"> {ip} - {info['type']}")
 
 
 def show_shutdown(packet_count):
-    print("\nStopping sniffer...")
-    print(f"Saved {packet_count} packets to capture.csv")
+    console.print("\nStopping sniffer...")
+    console.print(f"Saved {packet_count} packets to capture.csv")
