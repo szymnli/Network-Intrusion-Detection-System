@@ -5,6 +5,7 @@ from scapy.all import *  # type: ignore
 from config import (
     ALERT_COOLDOWN,
     ICMP_SWEEP_THRESHOLD,
+    MALICIOUS_DOMAINS,
     PORT_SCAN_THRESHOLD,
     SYN_FLOOD_THRESHOLD,
     TIME_WINDOW,
@@ -16,13 +17,6 @@ from logger import (
     syn_flood_tracker,
 )
 from ui import show_alert
-
-# Update to a real tracker
-MALICIOUS_DOMAINS = {
-    "malware.testcategory.com",
-    "example-malicious.com",
-    "test.suspicious-domain.net",
-}
 
 
 def detect_port_scan(src, dport):

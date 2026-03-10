@@ -1,12 +1,13 @@
 from scapy.all import *  # type: ignore
 
-from config import IFACE
+from config import IFACE, MALICIOUS_DOMAINS
 from detectors import (
     detect_icmp_sweep,
     detect_port_scan,
     detect_suspicious_dns,
     detect_syn_flood,
 )
+from feeds import fetch_malicious_domains
 from logger import alerted_ips, log_packet, packet_log, save_log
 from ui import show_packet, show_shutdown, show_summary
 
@@ -63,6 +64,9 @@ def packet_callback(packet):
 
 
 def start_sniffing():
+    print("Fetching malicious domain feed...")
+    MALICIOUS_DOMAINS.update(fetch_malicious_domains())
+    print(f"Loaded {len(MALICIOUS_DOMAINS)} malicious domains")
     # Starting the sniffing process
     sniff(
         filter="tcp or udp or icmp",

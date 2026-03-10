@@ -1,5 +1,5 @@
 # Name of the capturing network interface
-IFACE = "wlp0s20f3"
+IFACE = "eth0"
 # Time window for detecting port scans
 TIME_WINDOW = 10
 # Amount of unique ports a single IP address needs to scan to trigger port scan detection
@@ -10,3 +10,5 @@ SYN_FLOOD_THRESHOLD = 100
 ICMP_SWEEP_THRESHOLD = 20
 # Amount of time for generating another alert for the same IP addr
 ALERT_COOLDOWN = 300
+# Set for containing fetched malicious DNS hostnames from urlhaus.abuse.ch
+MALICIOUS_DOMAINS = set()

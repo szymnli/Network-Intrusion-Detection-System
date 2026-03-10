@@ -19,3 +19,5 @@
 - nmap / hping3 — attack simulation
 - VirtualBox or VMware — for a safe isolated lab
 
+## Requirements
+- libpcap-dev
