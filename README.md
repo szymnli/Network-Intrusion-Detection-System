@@ -133,11 +133,3 @@ Captured packets are saved to `capture.csv` on exit with the following fields:
 `Protocol`, `Source IP`, `Source Port`, `Destination IP`, `Destination Port`, `Packet Length`, `TCP Flag`, `ICMP Type`, `Timestamp`
 
 > `capture.csv` is excluded from version control via `.gitignore` as it may contain sensitive network data.
-
----
-
-## Acknowledgements
-
-- [Abuse.ch URLhaus](https://urlhaus.abuse.ch/) for the free malicious domain feed
-- [Scapy](https://scapy.net/) for packet capture and manipulation
-- [Rich](https://github.com/Textualize/rich) for terminal formatting
